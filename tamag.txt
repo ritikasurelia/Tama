@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Celestial Virtual Pet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at top, #402c7a 0%, #1a1032 40%, #05030c 100%);
+      --card-bg: rgba(15, 10, 40, 0.85);
+      --accent-gold: #f8d57a;
+      --accent-purple: #9b6dff;
+      --accent-pink: #ff9ed6;
+      --accent-blue: #7dd6ff;
+      --text-main: #f6f2ff;
+      --text-muted: #b8aee0;
+      --danger: #ff6b81;
+      --radius-lg: 22px;
+      --transition-fast: 200ms ease-out;
+      --transition-med: 350ms ease;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.6);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Playfair Display", system-ui, sans-serif; background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; overflow: hidden; }
+    .starfield { position: fixed; inset: 0; pointer-events: none; background-image: radial-gradient(circle at 10% 20%, rgba(255,255,255,0.25) 0, transparent 55%), radial-gradient(circle at 90% 10%, rgba(255,255,255,0.12) 0, transparent 55%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.12) 0, transparent 55%); opacity: 0.4; mix-blend-mode: screen; z-index: 0; }
+    .halo { position: fixed; top: 55%; left: 50%; width: 550px; height: 550px; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(248, 213, 122, 0.08), transparent 60%); filter: blur(4px); pointer-events: none; z-index: 0; }
+    .app { position: relative; z-index: 1; width: 100%; max-width: 520px; background: var(--card-bg); border-radius: 28px; box-shadow: var(--shadow-soft); border: 1px solid rgba(248, 213, 122, 0.18); padding: 26px 22px 22px; backdrop-filter: blur(18px); display: flex; flex-direction: column; gap: 18px; }
+    .app-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+    .title-group { display: flex; flex-direction: column; gap: 4px; }
+    .app-title { font-size: 1.3rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-gold); }
+    .subtitle { font-size: 0.78rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .age { font-size: 0.82rem; text-align: right; color: var(--accent-blue); }
+    .pet-card { position: relative; border-radius: var(--radius-lg); padding: 16px 16px 18px; background: radial-gradient(circle at top, rgba(155, 109, 255, 0.32), rgba(16, 10, 40, 0.85) 50%, rgba(10, 6, 25, 0.95) 100%); border: 1px solid rgba(155, 109, 255, 0.38); overflow: hidden; }
+    .pet-orbit { position: absolute; inset: 0; background: radial-gradient(circle at 10% 0%, rgba(255, 184, 108, 0.35), transparent 55%), radial-gradient(circle at 85% 100%, rgba(255, 158, 214, 0.3), transparent 55%); opacity: 0.65; mix-blend-mode: screen; pointer-events: none; }
+    .mood-text { position: relative; text-align: center; font-size: 0.9rem; margin-bottom: 8px; color: var(--accent-gold); text-shadow: 0 0 18px rgba(248, 213, 122, 0.6); }
+    .pet-wrapper { position: relative; display: flex; justify-content: center; align-items: flex-end; margin-top: 6px; padding-bottom: 8px; }
+    .pet-shadow { position: absolute; bottom: 0; width: 56%; height: 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.6), transparent 70%); filter: blur(4px); opacity: 0.7; transform-origin: center; transition: transform var(--transition-med), opacity var(--transition-med); }
+    .pet { position: relative; width: 155px; height: 155px; border-radius: 45% 55% 50% 50%; background: radial-gradient(circle at 30% 0%, #ffe6f6 0%, #ffb9df 40%, #f59df7 65%, #c58aff 100%); box-shadow: 0 18px 40px rgba(0,0,0,0.7), 0 0 18px rgba(255,255,255,0.25), 0 0 40px rgba(155,109,255,0.7); display: flex; align-items: center; justify-content: center; transform-origin: center bottom; transition: transform var(--transition-med), box-shadow var(--transition-med), filter var(--transition-med); overflow: visible; border: 1px solid rgba(255,255,255,0.45); }
+    .pet-face { font-size: 3.1rem; text-shadow: 0 0 14px rgba(0,0,0,0.4); transition: transform var(--transition-fast); z-index: 1; }
+    .pet-glow-ring { position: absolute; inset: 12px; border-radius: inherit; border: 1px dashed rgba(255,255,255,0.3); opacity: 0.42; filter: blur(0.2px); pointer-events: none; }
+    .pet-tears::before, .pet-tears::after { content: "💧"; position: absolute; top: 52%; font-size: 1.3rem; opacity: 0; transform: translateY(0); transition: opacity var(--transition-med); filter: drop-shadow(0 3px 3px rgba(0,0,0,0.6)); }
+    .pet-tears::before { left: 36%; }
+    .pet-tears::after { right: 36%; }
+    @keyframes pet-bounce { 0%, 100% { transform: translateY(0) scale(1); } 25% { transform: translateY(-10px) scale(1.02); } 50% { transform: translateY(0) scale(0.99); } 75% { transform: translateY(-6px) scale(1.01); } }
+    @keyframes pet-idle { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.005); } }
+    @keyframes pet-sad { 0%, 100% { transform: translateY(0) scale(0.98); } 50% { transform: translateY(4px) scale(0.96); } }
+    @keyframes pet-cry { 0% { transform: translateY(0) scale(0.96); } 50% { transform: translateY(6px) scale(0.94); } 100% { transform: translateY(0) scale(0.96); } }
+    @keyframes tear-fall { 0% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; transform: translateY(20px); } 100% { opacity: 0; transform: translateY(28px); } }
+    .mood-happy .pet { animation: pet-bounce 1.3s infinite cubic-bezier(0.37, 0, 0.63, 1); }
+    .mood-normal .pet { animation: pet-idle 3s infinite ease-in-out; }
+    .mood-sad .pet { animation: pet-sad 2.4s infinite ease-in-out; filter: grayscale(0.08) brightness(0.95); }
+    .mood-critical .pet { animation: pet-cry 1.1s infinite ease-in-out; filter: grayscale(0.2) brightness(0.85); }
+    .mood-critical .pet-tears::before, .mood-critical .pet-tears::after { opacity: 1; animation: tear-fall 1s infinite ease-in; }
+    .pet-info-row { margin-top: 4px; display: flex; align-items: center; justify-content: space-between; font-size: 0.88rem; color: var(--text-muted); }
+    .pet-name { color: var(--accent-pink); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+    .pet-status-chip { padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(248,213,122,0.45); background: linear-gradient(120deg, rgba(248,213,122,0.38), rgba(155,109,255,0.32)); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; display: inline-flex; align-items: center; gap: 6px; }
+    .stats-card { border-radius: var(--radius-lg); padding: 14px 14px 12px; background: linear-gradient(145deg, rgba(8,5,22,0.95), rgba(26,18,58,0.96)); border: 1px solid rgba(73,51,140,0.85); display: flex; flex-direction: column; gap: 10px; }
+    .stats-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+    .stats-title { font-size: 0.9rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+    .stats-overall { font-size: 0.8rem; color: var(--accent-gold); }
+    .stat-row { display: flex; flex-direction: column; gap: 4px; }
+    .stat-label-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: var(--text-muted); }
+    .stat-label { display: flex; align-items: center; gap: 6px; }
+    .stat-label span.emoji { font-size: 1.1rem; }
+    .stat-value { font-size: 0.78rem; color: var(--accent-gold); }
+    .stat-bar { position: relative; width: 100%; height: 10px; border-radius: 999px; background: radial-gradient(circle at 0 0, rgba(255,255,255,0.18), transparent 60%); border: 1px solid rgba(78,58,150,0.8); overflow: hidden; }
+    .stat-fill { position: absolute; inset: 0; width: 50%; border-radius: inherit; background-image: linear-gradient(90deg, var(--accent-gold), var(--accent-purple)); box-shadow: 0 0 12px rgba(248,213,122,0.45); transform-origin: left center; transition: width 260ms ease-out; }
+    .stat-fill.low { background-image: linear-gradient(90deg, var(--danger), #ff9a9a); box-shadow: 0 0 12px rgba(255,107,129,0.6); }
+    .stat-fill.medium { background-image: linear-gradient(90deg, #ffe9a5, var(--accent-gold)); }
+    .stat-fill.high { background-image: linear-gradient(90deg, var(--accent-gold), var(--accent-purple)); }
+    .actions-card { border-radius: var(--radius-lg); padding: 11px 12px 12px; background: linear-gradient(145deg, rgba(8,7,18,0.98), rgba(30,24,66,0.98)); border: 1px solid rgba(73,51,140,0.85); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .action-btn { position: relative; border: none; outline: none; cursor: pointer; border-radius: 999px; padding: 8px 10px 9px; font-family: inherit; font-size: 0.86rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-main); background-color: rgba(26,18,58,0.95); border: 1px solid rgba(155,109,255,0.7); display: flex; align-items: center; justify-content: center; gap: 7px; transition: transform 120ms ease-out, box-shadow 180ms ease-out, border-color var(--transition-fast), color var(--transition-fast); box-shadow: 0 10px 20px rgba(0,0,0,0.55); }
+    .action-btn span.emoji { font-size: 1.15rem; }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.7); border-color: var(--accent-gold); color: var(--accent-gold); }
+    .action-btn:active { transform: translateY(0); }
+    .footer-row { margin-top: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: var(--text-muted); }
+    .save-indicator { font-size: 0.74rem; color: var(--accent-gold); }
+    @keyframes pulse { 0%, 100% { opacity: 0.18; } 50% { opacity: 1; } }
+    #saveDot { animation: pulse 1.4s infinite ease-in-out; }
+    .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at top, rgba(0,0,0,0.82), rgba(2,0,10,0.96)); z-index: 10; transition: opacity 0.26s; }
+    .overlay-card { width: 100%; max-width: 360px; background: radial-gradient(circle at top, rgba(248,213,122,0.22), rgba(16,10,40,0.98)); border-radius: 24px; padding: 20px 20px 18px; border: 1px solid rgba(248,213,122,0.45); box-shadow: var(--shadow-soft); text-align: center; }
+    .overlay-title { font-size: 1.18rem; color: var(--accent-gold); margin-bottom: 8px; }
+    .overlay-subtitle { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 14px; }
+    .name-input-row { display: flex; gap: 8px; margin-bottom: 6px; }
+    .name-input { flex: 1; border-radius: 999px; border: 1px solid rgba(155,109,255,0.8); padding: 7px 12px 8px; background: rgba(4,1,18,0.95); color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
+    .name-input::placeholder { color: rgba(184,174,224,0.68); }
+    .name-input:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 1px rgba(248,213,122,0.4); }
+    .overlay-btn { border-radius: 999px; border: none; outline: none; padding: 7px 14px 8px; font-family: inherit; font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; color: #120b2c; background: linear-gradient(135deg, var(--accent-gold), var(--accent-pink)); box-shadow: 0 12px 24px rgba(0,0,0,0.65); transition: transform 130ms ease-out, filter 160ms ease-out; }
+    .overlay-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .overlay-hint { font-size: 0.76rem; color: var(--text-muted); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="starfield"></div>
+  <div class="halo"></div>
+
+  <div class="overlay" id="nameOverlay">
+    <div class="overlay-card">
+      <div class="overlay-title">Name Your Starry Friend ✨</div>
+      <div class="overlay-subtitle">A tiny celestial spirit is waking up. What shall we call them?</div>
+      <div class="name-input-row">
+        <input id="petNameInput" class="name-input" type="text" maxlength="16" placeholder="Enter a name..." autocomplete="off" />
+        <button type="button" class="overlay-btn" id="beginBtn">Begin</button>
+      </div>
+      <div class="overlay-hint">You can always refresh to meet them again.</div>
+    </div>
+  </div>
+
+  <main class="app">
+    <header class="app-header">
+      <div class="title-group">
+        <div class="app-title">Celestial Companion</div>
+        <div class="subtitle">Your virtual star pet</div>
+      </div>
+      <div class="age" id="ageDisplay">Age: 0 min</div>
+    </header>
+
+    <section class="pet-card">
+      <div class="pet-orbit"></div>
+      <div class="mood-text" id="moodText">A sleepy soul is arriving...</div>
+      <div class="pet-wrapper" id="petWrapper">
+        <div class="pet-shadow"></div>
+        <div class="pet pet-tears">
+          <div class="pet-glow-ring"></div>
+          <div class="pet-face" id="petFace">🌙</div>
+        </div>
+      </div>
+      <div class="pet-info-row">
+        <div class="pet-name" id="petNameLabel">Unnamed</div>
+        <div class="pet-status-chip" id="statusChip">
+          <span>🪐</span><span id="statusText">Arriving</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-card">
+      <div class="stats-header">
+        <div class="stats-title">Wellbeing</div>
+        <div class="stats-overall" id="overallText">Overall: Stable</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label-row"><div class="stat-label"><span class="emoji">🍓</span><span>Hunger</span></div><div class="stat-value" id="hungerValue">100%</div></div>
+        <div class="stat-bar"><div class="stat-fill high" id="hungerBar" style="width:100%"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label-row"><div class="stat-label"><span class="emoji">⭐</span><span>Happiness</span></div><div class="stat-value" id="happinessValue">100%</div></div>
+        <div class="stat-bar"><div class="stat-fill high" id="happinessBar" style="width:100%"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label-row"><div class="stat-label"><span class="emoji">⚡</span><span>Energy</span></div><div class="stat-value" id="energyValue">100%</div></div>
+        <div class="stat-bar"><div class="stat-fill high" id="energyBar" style="width:100%"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label-row"><div class="stat-label"><span class="emoji">🩷</span><span>Love</span></div><div class="stat-value" id="loveValue">100%</div></div>
+        <div class="stat-bar"><div class="stat-fill high" id="loveBar" style="width:100%"></div></div>
+      </div>
+    </section>
+
+    <section class="actions-card">
+      <button class="action-btn" id="btnFeed" type="button"><span class="emoji">🍓</span><span>Feed</span></button>
+      <button class="action-btn" id="btnPlay" type="button"><span class="emoji">🎮</span><span>Play</span></button>
+      <button class="action-btn" id="btnSleep" type="button"><span class="emoji">💤</span><span>Sleep</span></button>
+      <button class="action-btn" id="btnCuddle" type="button"><span class="emoji">🩷</span><span>Cuddle</span></button>
+    </section>
+
+    <div class="footer-row">
+      <div class="tip">Keep all four glowing to keep your companion delighted.</div>
+      <div class="save-indicator"><span id="saveDot">●</span> Autosaving</div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const els = {
+        overlay: document.getElementById("nameOverlay"),
+        beginBtn: document.getElementById("beginBtn"),
+        nameInput: document.getElementById("petNameInput"),
+        petNameLabel: document.getElementById("petNameLabel"),
+        moodText: document.getElementById("moodText"),
+        statusText: document.getElementById("statusText"),
+        statusChip: document.getElementById("statusChip"),
+        petFace: document.getElementById("petFace"),
+        petWrapper: document.getElementById("petWrapper"),
+        ageDisplay: document.getElementById("ageDisplay"),
+        overallText: document.getElementById("overallText"),
+        hungerValue: document.getElementById("hungerValue"),
+        happinessValue: document.getElementById("happinessValue"),
+        energyValue: document.getElementById("energyValue"),
+        loveValue: document.getElementById("loveValue"),
+        hungerBar: document.getElementById("hungerBar"),
+        happinessBar: document.getElementById("happinessBar"),
+        energyBar: document.getElementById("energyBar"),
+        loveBar: document.getElementById("loveBar"),
+        btnFeed: document.getElementById("btnFeed"),
+        btnPlay: document.getElementById("btnPlay"),
+        btnSleep: document.getElementById("btnSleep"),
+        btnCuddle: document.getElementById("btnCuddle")
+      };
+
+      let state = { name: "", stats: { hunger: 100, happiness: 100, energy: 100, love: 100 }, birthTime: Date.now(), lastUpdated: Date.now() };
+
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+      els.beginBtn.addEventListener("click", () => {
+        const val = els.nameInput.value.trim();
+        state.name = val || "Nova";
+        state.birthTime = Date.now();
+        state.lastUpdated = Date.now();
+        updateUI();
+        els.overlay.style.opacity = "0";
+        setTimeout(() => els.overlay.style.display = "none", 260);
+      });
+
+      els.nameInput.addEventListener("keydown", e => { if (e.key === "Enter") els.beginBtn.click(); });
+      setTimeout(() => els.nameInput.focus(), 200);
+
+      function computeMood() {
+        const { hunger, happiness, energy, love } = state.stats;
+        const min = Math.min(hunger, happiness, energy, love);
+        const avg = (hunger + happiness + energy + love) / 4;
+        if (min === 0) return "critical";
+        if (min < 25) return "sad";
+        if (avg > 80 && min > 70) return "happy";
+        return "normal";
+      }
+
+      function setBar(bar, val, pct) {
+        const p = Math.round(pct);
+        val.textContent = p + "%";
+        bar.style.width = p + "%";
+        bar.className = "stat-fill " + (p === 0 ? "low" : p <= 25 ? "low" : p <= 65 ? "medium" : "high");
+      }
+
+      function updateUI() {
+        const { hunger, happiness, energy, love } = state.stats;
+        const mood = computeMood();
+        const name = state.name || "your friend";
+
+        els.petNameLabel.textContent = state.name || "Unnamed";
+        setBar(els.hungerBar, els.hungerValue, hunger);
+        setBar(els.happinessBar, els.happinessValue, happiness);
+        setBar(els.energyBar, els.energyValue, energy);
+        setBar(els.loveBar, els.loveValue, love);
+
+        const faces = { happy: "😊", normal: "✨", sad: "🥺", critical: "😭" };
+        const moods = { happy: `${name} is over the moon with joy.`, normal: `${name} feels comfy among the stars.`, sad: `${name} feels a little dim—tend to them.`, critical: `${name} is crying out for you...` };
+        const statuses = { happy: "Radiant", normal: "Content", sad: "Fading", critical: "In Tears" };
+
+        els.petFace.textContent = faces[mood];
+        els.moodText.textContent = moods[mood];
+        els.statusText.textContent = statuses[mood];
+
+        const avg = (hunger + happiness + energy + love) / 4;
+        const min = Math.min(hunger, happiness, energy, love);
+        els.overallText.textContent = min === 0 ? "Overall: Critical" : min < 25 ? "Overall: Fragile" : avg > 80 ? "Overall: Radiant" : "Overall: Stable";
+
+        els.petWrapper.className = "pet-wrapper mood-" + mood;
+        const ageMin = Math.floor((Date.now() - state.birthTime) / 60000);
+        els.ageDisplay.textContent = "Age: " + ageMin + " min";
+      }
+
+      function adjustStat(key, delta) {
+        state.stats[key] = clamp(state.stats[key] + delta, 0, 100);
+        updateUI();
+      }
+
+      els.btnFeed.addEventListener("click", () => adjustStat("hunger", 18));
+      els.btnPlay.addEventListener("click", () => adjustStat("happiness", 16));
+      els.btnSleep.addEventListener("click", () => adjustStat("energy", 20));
+      els.btnCuddle.addEventListener("click", () => adjustStat("love", 18));
+
+      setInterval(() => {
+        const elapsed = (Date.now() - state.lastUpdated) / 1000;
+        state.stats.hunger = clamp(state.stats.hunger - 0.06 * elapsed, 0, 100);
+        state.stats.happiness = clamp(state.stats.happiness - 0.06 * elapsed, 0, 100);
+        state.stats.energy = clamp(state.stats.energy - 0.05 * elapsed, 0, 100);
+        state.stats.love = clamp(state.stats.love - 0.05 * elapsed, 0, 100);
+        state.lastUpdated = Date.now();
+        updateUI();
+      }, 5000);
+
+      updateUI();
+    })();
+  </script>
+</body>
+</html>
